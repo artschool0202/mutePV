@@ -1,5 +1,5 @@
 // アプリ本体だけをキャッシュする（YouTube と検索 API は通さない）。直したら CACHE の版を上げる
-var CACHE = 'mutepv-v9';
+var CACHE = 'mutepv-v10';
 var FILES = ['./', './index.html', './style.css', './app.js', './manifest.json',
   './icon.svg', './icon-192.png', './icon-512.png'];
 

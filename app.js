@@ -257,6 +257,13 @@
   function layoutVideo() {
     var mode = zoomMode || 'fill';
     var w = window.innerWidth, h = window.innerHeight;
+    // v10：iPhone のホーム画面アプリは、innerHeight が画面の下端（ホームバーの部分）を含まないことがあり、
+    // 回転表示の片側に黒い帯が出た。ホーム画面アプリは画面全体に描けるので、画面そのものの大きさを使う
+    if (isIOS && standalone && screen.width && screen.height) {
+      var sw = screen.width, sh = screen.height;
+      if ((w > h) !== (sw > sh)) { var s = sw; sw = sh; sh = s; }
+      w = Math.max(w, sw); h = Math.max(h, sh);
+    }
     root.style.setProperty('--sw', w + 'px');   // v8：回転表示の枠に、実際に測った画面の大きさを使う
     root.style.setProperty('--sh', h + 'px');
     if (document.body.classList.contains('rot') && h > w) { var t = w; w = h; h = t; } // 90°回しているときは縦横を入れ替える
