@@ -190,17 +190,18 @@
   }
 
   /* ===== v15：音を切り替えたとき、iPhone で動画が止まって次へ飛ぶのを防ぐ =====
-     再生中の動画と位置を2秒ごとに覚えておき、音の切り替えから6秒以内にエラーや「終了」が来たら、
+     音を切り替えた瞬間の動画と位置を覚えておき（v16）、音の切り替えから6秒以内にエラーや「終了」が来たら、
      次の動画へ行かずに同じ動画の同じ位置から再生し直す */
   var lastPos = { id: null, t: 0, dur: 0 }, lastToggle = 0;
-  setInterval(function () {
+  // v16：2秒ごとに見に行くのをやめ、音を切り替えた瞬間だけ位置を覚える（起動時は何もしない）
+  function markToggle() {
+    lastToggle = Date.now();
     if (!ready || playlistId) return;
     try {
-      if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;
       var d = player.getVideoData();
       lastPos = { id: d && d.video_id, t: player.getCurrentTime() || 0, dur: player.getDuration() || 0 };
     } catch (e) {}
-  }, 2000);
+  }
   function resumeAfterToggle(why) {
     if (!lastToggle || Date.now() - lastToggle > 6000 || !lastPos.id) return false;
     if (lastPos.dur && lastPos.t > lastPos.dur - 5) return false; // 本当に終わりかけだったなら次へ
@@ -259,7 +260,7 @@
     if (!ready) return;
     var first = !unlocked;
     unlocked = true;
-    lastToggle = Date.now(); // v15
+    markToggle(); // v15/v16
     applySound();
     if (player.getPlayerState() !== YT.PlayerState.PLAYING && (queue.length || playlistId)) player.playVideo();
     if (first && soundOn) toast('音を出しました', 1500);
@@ -304,7 +305,7 @@
     soundOn = !soundOn;
     btnSnd.classList.toggle('on', soundOn);
     unlocked = true;
-    lastToggle = Date.now(); // v15
+    markToggle(); // v15/v16
     applySound();
     toast(soundOn ? '音を出します' : '音を消しました', 1500);
   });
