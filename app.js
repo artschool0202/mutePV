@@ -137,7 +137,8 @@
 
   function createPlayer() {
     if (player || !apiReady) return;
-    var vars = { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, rel: 0, playsinline: 1, modestbranding: 1 };
+    // cc_load_policy: 0 … YouTube の字幕を最初から出さない
+    var vars = { autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, rel: 0, playsinline: 1, modestbranding: 1, cc_load_policy: 0 };
     if (location.origin && location.origin !== 'null') vars.origin = location.origin;
     player = new YT.Player('player', {
       playerVars: vars,
@@ -173,6 +174,7 @@
   function onState(e) {
     if (e.data === YT.PlayerState.PLAYING) {
       errRun = 0;
+      hideCaptions();
       if (!player.isMuted()) player.mute();
       var d = player.getVideoData ? player.getVideoData() : {};
       if (d && d.video_id && d.video_id !== captionFor) {
@@ -183,6 +185,18 @@
     } else if (e.data === YT.PlayerState.ENDED && !playlistId) {
       next();
     }
+  }
+
+  // YouTube の字幕（自動字幕を含む）を消す。ミュート再生だと字幕が自動で出ることがあるため、
+  // 再生が始まるたびに字幕の部品を外す（少し遅れて出る場合に備えて2回）
+  function hideCaptions() {
+    function off() {
+      try { player.setOption('captions', 'track', {}); } catch (e) {}
+      try { player.unloadModule('captions'); } catch (e) {}
+      try { player.unloadModule('cc'); } catch (e) {}
+    }
+    off();
+    setTimeout(off, 1500);
   }
 
   // 埋め込み禁止・削除済みなどで再生できない動画は、記録して飛ばす
