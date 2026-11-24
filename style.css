@@ -102,9 +102,6 @@ html, body {
 #bar button[disabled] { display: none; }
 #bar svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #btnNext path:first-child { fill: currentColor; }
-/* v12：音のボタン（オンで波・オレンジ、オフで×） */
-#btnSnd .x, #btnSnd.on .w { display: inline; }
-#btnSnd .w, #btnSnd.on .x { display: none; }
 
 /* ===== 設定 ===== */
 #settings {
