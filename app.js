@@ -42,7 +42,7 @@
   function say(t) { msgEl.textContent = t || ''; }
 
   /* ===== 動画の一覧（キュー）を作る ===== */
-  var queue = [], pos = -1, playlistId = null, bad = store.get('bad', {}), lastLists = [];
+  var queue = [], pos = -1, playlistId = null, bad = store.get('bad', {}), lastLists = [], buildErr = null;
   var SHARE_MAX = 40; // 共有リンクに入れる動画の上限（QRコードが細かくなりすぎないように）
 
   function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
@@ -110,6 +110,7 @@
     }) : [];
     var lastErr = null;
     return Promise.all(jobs).then(function (lists) {
+      buildErr = lastErr; // 共有リンクの画面でも理由を出せるように残す
       var items = [], seen = {};
       lists = lists.concat([u.vids.map(function (id) { return { id: id, title: '', artist: '' }; })]);
       lastLists = lists; // 共有リンクを作るときに、アーティストごとの結果を使う
@@ -346,7 +347,15 @@
 
   function makeShare() {
     var ids = pickShareIds();
-    if (!ids.length) { $('#setNote').textContent = '共有できる動画がありません。先にアーティストを登録して検索してください'; return; }
+    if (!ids.length) {
+      var why;
+      if (cfg.artists.length && !cfg.key) why = 'この端末（このアプリ）には YouTube API キーが入っていないので、検索できません。上の「YouTube API キー」の欄にキーを貼り付けてから、もう一度押してください';
+      else if (buildErr) why = errText(buildErr);
+      else if (!cfg.artists.length) why = '先にアーティストを登録してください';
+      else why = '検索しても再生できる動画が見つかりませんでした。アーティスト名の書き方を変えてみてください';
+      $('#setNote').textContent = '共有リンクを作れませんでした：' + why;
+      return;
+    }
     var base = location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '');
     var link = base + '#v=' + ids.join(',');
     var names = cfg.artists.length ? cfg.artists.join('、') : 'URLで入れた動画';
