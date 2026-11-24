@@ -266,6 +266,12 @@
     }
     root.style.setProperty('--sw', w + 'px');   // v8：回転表示の枠に、実際に測った画面の大きさを使う
     root.style.setProperty('--sh', h + 'px');
+    // v11（試し）：iPhone のホーム画面アプリで、ページ自体の高さが画面より短く、下端に描けない帯が残る。
+    // ページ（html・body）の高さを画面の高さまで伸ばして、下端まで描けるようにする
+    if (isIOS && standalone) {
+      root.style.height = h + 'px';
+      document.body.style.height = h + 'px';
+    }
     if (document.body.classList.contains('rot') && h > w) { var t = w; w = h; h = t; } // 90°回しているときは縦横を入れ替える
     else if (h > w) mode = 'fit'; // v9：縦持ちで回転なしのときは、いっぱいにすると大きく切れるので全体を表示
     var k = mode === 'fit' ? Math.min(w / 16, h / 9) : Math.max(w / 16, h / 9);
@@ -296,7 +302,8 @@
     zoomMode = ZOOMS[(ZOOMS.indexOf(zoomMode) + 1) % ZOOMS.length];
     store.set('zoom', zoomMode);
     layoutVideo();
-    toast(ZOOM_NAME[zoomMode], 2500);
+    // v11：iPhone では原因を確かめるため、画面の高さとブラウザが使える高さも小さく出す
+    toast(ZOOM_NAME[zoomMode] + (isIOS ? '（画面 ' + screen.height + ' / 表示 ' + window.innerHeight + '）' : ''), 3500);
   });
 
   btnFs.addEventListener('click', function () {
