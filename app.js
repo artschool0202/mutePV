@@ -152,13 +152,6 @@
 
   function start() {
     if (!ready) return;
-    // v13：音を消したときにプレーヤーを作り直した場合は、同じ動画の同じ位置から続ける
-    if (resumeAt) {
-      player.loadVideoById({ videoId: resumeAt.id, startSeconds: resumeAt.t });
-      player.mute();
-      resumeAt = null;
-      return;
-    }
     if (playlistId) {
       player.loadPlaylist({ list: playlistId, listType: 'playlist', index: 0 });
       player.setLoop(true);
@@ -286,28 +279,9 @@
     soundOn = !soundOn;
     btnSnd.classList.toggle('on', soundOn);
     unlocked = true;
-    if (soundOn) { applySound(); toast('音を出します', 1500); return; }
-    toast('音を消しました', 1500);
-    rebuildPlayer();
+    applySound();
+    toast(soundOn ? '音を出します' : '音を消しました', 1500);
   });
-
-  // v13：iPhone は一度音を出すと「再生中」の扱いになり、時計・電池の表示が出たままになる。
-  // 音を消すときはプレーヤーを作り直して「再生中」を終わらせ、同じ動画の同じ位置から音なしで続ける
-  var resumeAt = null;
-  function rebuildPlayer() {
-    if (!player) return;
-    try {
-      var d = player.getVideoData ? player.getVideoData() : null;
-      if (!playlistId && d && d.video_id) resumeAt = { id: d.video_id, t: Math.floor(player.getCurrentTime() || 0) };
-      player.destroy();
-    } catch (e) {}
-    player = null; ready = false; captionFor = resumeAt ? resumeAt.id : null;
-    if (!document.getElementById('player')) {
-      var div = document.createElement('div'); div.id = 'player';
-      $('#playerWrap').appendChild(div);
-    }
-    createPlayer();
-  }
 
 
   // 全画面
