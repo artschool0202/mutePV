@@ -257,6 +257,8 @@
   function layoutVideo() {
     var mode = zoomMode || 'fill';
     var w = window.innerWidth, h = window.innerHeight;
+    root.style.setProperty('--sw', w + 'px');   // v8：回転表示の枠に、実際に測った画面の大きさを使う
+    root.style.setProperty('--sh', h + 'px');
     if (document.body.classList.contains('rot') && h > w) { var t = w; w = h; h = t; } // 90°回しているときは縦横を入れ替える
     var k = mode === 'fit' ? Math.min(w / 16, h / 9) : Math.max(w / 16, h / 9);
     if (mode === 'zoom') k *= ZOOM_EXTRA;

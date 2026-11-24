@@ -29,12 +29,17 @@ html, body {
 
 /* iPhone 用：縦持ちのとき、動画を90°回して画面いっぱいに出す */
 @media (orientation: portrait) {
+  /* v8：iPhone は 100vh と実際の画面の高さがずれるので、JS が測った大きさ（--sw/--sh）を使う */
   body.rot #playerWrap {
-    top: 0; left: 100vw; right: auto; bottom: auto;
-    width: 100vh; height: 100vw;
+    top: 0; left: var(--sw, 100vw); right: auto; bottom: auto;
+    width: var(--sh, 100vh); height: var(--sw, 100vw);
     transform-origin: 0 0; transform: rotate(90deg);
   }
   body.rot #caption { display: none; }
+  /* v8：回転表示のときはボタンも90°回して、横から見たときの右上（＝縦持ちの右下）に縦に並べる */
+  body.rot #bar { top: auto; bottom: 2vmin; right: 2vmin; flex-direction: column; }
+  body.rot #bar button { margin: 1vmin 0 0; }
+  body.rot #bar svg { transform: rotate(90deg); }
 }
 
 /* ===== 短い案内 ===== */
@@ -71,9 +76,10 @@ html, body {
 /* ===== 操作ボタン（右上、5秒で消える） ===== */
 #bar { position: fixed; top: 1.5vh; right: 1.5vw; z-index: 10; display: flex; transition: opacity .5s; }
 #bar.hide { opacity: 0; pointer-events: none; }
+/* v8：大きさは画面の短い辺（vmin）基準に。縦持ちの iPhone で大きくなりすぎないように */
 #bar button {
-  width: 13vh; height: 13vh; min-width: 38px; min-height: 38px;
-  margin-left: 1vh; padding: 3.4vh; border: 0; border-radius: 50%;
+  width: 13vmin; height: 13vmin; min-width: 38px; min-height: 38px;
+  margin-left: 1vmin; padding: 3.4vmin; border: 0; border-radius: 50%;
   background: rgba(0, 0, 0, .5); color: var(--fg); outline: none;
 }
 #bar button.on { color: var(--accent); }
