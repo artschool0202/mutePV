@@ -367,10 +367,12 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, ms || 6000);
   }
-  // Safari で開いているときは、ホーム画面に追加すると上下のバーが消えることを3回まで案内
+  // v17：Safari のタブで開いているとき（YouTube Premium のログインを効かせるため）は、
+  // ページを少しだけスクロールできるようにする。画面をなぞってスクロールすると Safari のバーが小さく畳まれる
   if (isIOS && !standalone) {
-    var tips = store.get('iosTip', 0);
-    if (tips < 3) { store.set('iosTip', tips + 1); setTimeout(function () { toast('Safari の共有ボタン（□↑）→「ホーム画面に追加」から開くと、上下のバーが消えて大きく映ります', 8000); }, 2500); }
+    root.classList.add('safari');
+    var tips = store.get('iosTip2', 0);
+    if (tips < 3) { store.set('iosTip2', tips + 1); setTimeout(function () { toast('画面を下から上へなぞると、Safari のバーが小さくなります', 6000); }, 2500); }
   }
 
   layoutVideo();
