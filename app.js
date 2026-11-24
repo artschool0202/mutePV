@@ -184,8 +184,30 @@
         showCaption(item && item.artist ? item.artist : (d.author || ''), item && item.title ? item.title : (d.title || ''));
       }
     } else if (e.data === YT.PlayerState.ENDED && !playlistId) {
+      if (resumeAfterToggle('終了')) return; // v15：音の切り替え直後の「終了」は、本当の終わりでなければ同じ動画に戻す
       next();
     }
+  }
+
+  /* ===== v15：音を切り替えたとき、iPhone で動画が止まって次へ飛ぶのを防ぐ =====
+     再生中の動画と位置を2秒ごとに覚えておき、音の切り替えから6秒以内にエラーや「終了」が来たら、
+     次の動画へ行かずに同じ動画の同じ位置から再生し直す */
+  var lastPos = { id: null, t: 0, dur: 0 }, lastToggle = 0;
+  setInterval(function () {
+    if (!ready || playlistId) return;
+    try {
+      if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+      var d = player.getVideoData();
+      lastPos = { id: d && d.video_id, t: player.getCurrentTime() || 0, dur: player.getDuration() || 0 };
+    } catch (e) {}
+  }, 2000);
+  function resumeAfterToggle(why) {
+    if (!lastToggle || Date.now() - lastToggle > 6000 || !lastPos.id) return false;
+    if (lastPos.dur && lastPos.t > lastPos.dur - 5) return false; // 本当に終わりかけだったなら次へ
+    lastToggle = 0; // 1回だけ
+    player.loadVideoById({ videoId: lastPos.id, startSeconds: Math.floor(lastPos.t) });
+    applySound();
+    return true;
   }
 
   // YouTube の字幕（自動字幕を含む）を消す。ミュート再生だと字幕が自動で出ることがあるため、
@@ -202,10 +224,12 @@
 
   // 埋め込み禁止・削除済みなどで再生できない動画は、記録して飛ばす
   function onError(e) {
+    if (resumeAfterToggle('エラー')) return; // v15
     var id = !playlistId && queue[pos] ? queue[pos].id : null;
     if (id && (e.data === 100 || e.data === 101 || e.data === 150)) { bad[id] = 1; store.set('bad', bad); }
     errRun++;
     if (errRun > Math.max(5, queue.length)) { say('再生できる動画が見つかりません。検索の言葉やアーティストを変えてみてください'); return; }
+    toast('再生できなかったので次の動画へ（' + e.data + '）', 3000); // v15：飛ばした理由を出す
     setTimeout(next, 600);
   }
 
@@ -235,6 +259,7 @@
     if (!ready) return;
     var first = !unlocked;
     unlocked = true;
+    lastToggle = Date.now(); // v15
     applySound();
     if (player.getPlayerState() !== YT.PlayerState.PLAYING && (queue.length || playlistId)) player.playVideo();
     if (first && soundOn) toast('音を出しました', 1500);
@@ -279,6 +304,7 @@
     soundOn = !soundOn;
     btnSnd.classList.toggle('on', soundOn);
     unlocked = true;
+    lastToggle = Date.now(); // v15
     applySound();
     toast(soundOn ? '音を出します' : '音を消しました', 1500);
   });
