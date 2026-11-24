@@ -222,16 +222,45 @@
   var root = document.documentElement, btnFs = $('#btnFs');
   var reqFs = root.requestFullscreen || root.webkitRequestFullscreen;
   function isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-  if (!reqFs) btnFs.disabled = true;
+
+  // iPhone は全画面と画面の向きの固定ができないので、代わりに
+  // 「縦持ちのまま動画を90°回して画面いっぱいに出す」に切り替える
+  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var standalone = window.navigator.standalone === true ||
+    (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+  var useRotate = !reqFs || isIOS;
+  var rot = store.get('rot', false);
+  function rotUi() { document.body.classList.toggle('rot', rot); btnFs.classList.toggle('on', rot); }
+  if (useRotate) rotUi();
+
+  var toastEl = $('#toast'), toastTimer = null;
+  function toast(t, ms) {
+    toastEl.textContent = t; toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, ms || 6000);
+  }
+  // Safari で開いているときは、ホーム画面に追加すると上下のバーが消えることを3回まで案内
+  if (isIOS && !standalone) {
+    var tips = store.get('iosTip', 0);
+    if (tips < 3) { store.set('iosTip', tips + 1); setTimeout(function () { toast('Safari の共有ボタン（□↑）→「ホーム画面に追加」から開くと、上下のバーが消えて大きく映ります', 8000); }, 2500); }
+  }
+
   btnFs.addEventListener('click', function () {
     showBar();
+    if (useRotate) {
+      rot = !rot; store.set('rot', rot); rotUi();
+      toast(rot ? '縦に持ったままでも、横向きの大きさで映します（スマホを横にすると普通の表示）' :
+        '回転をやめました。スマホを横にすると大きく映ります', 4000);
+      return;
+    }
     if (isFs()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
     var p = reqFs.call(root, { navigationUI: 'hide' });
     if (p && p.then) p.then(function () {
       if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {});
     }).catch(function () {});
   });
-  function fsUi() { btnFs.classList.toggle('on', isFs()); }
+  function fsUi() { if (!useRotate) btnFs.classList.toggle('on', isFs()); }
   document.addEventListener('fullscreenchange', fsUi);
   document.addEventListener('webkitfullscreenchange', fsUi);
 

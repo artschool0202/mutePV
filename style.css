@@ -20,6 +20,27 @@ html, body {
 #playerWrap iframe, #player { width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; border: 0; display: block; }
 #tap { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 5; }
 
+/* iPhone 用：縦持ちのとき、動画を90°回して画面いっぱいに出す */
+@media (orientation: portrait) {
+  body.rot #playerWrap {
+    top: 0; left: 100vw; right: auto; bottom: auto;
+    width: 100vh; height: 100vw;
+    transform-origin: 0 0; transform: rotate(90deg);
+  }
+  body.rot #playerWrap iframe, body.rot #player { width: 100vh; height: 56.25vh; max-height: 100vw; max-width: 177.78vw; }
+  body.rot #caption { display: none; }
+}
+
+/* ===== 短い案内 ===== */
+#toast {
+  position: fixed; left: 6vw; right: 6vw; top: 4vh; z-index: 15;
+  box-sizing: border-box;
+  padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, .78);
+  font-size: 14px; line-height: 1.5; text-align: center;
+  opacity: 0; transition: opacity .5s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
 /* ===== 案内 ===== */
 #msg {
   position: fixed; left: 6vw; right: 6vw; top: 50%; transform: translateY(-50%); z-index: 6;
