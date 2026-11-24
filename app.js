@@ -130,7 +130,7 @@
     });
   }
 
-  /* ===== YouTube プレーヤー（公式の埋め込み。常にミュート） ===== */
+  /* ===== YouTube プレーヤー（公式の埋め込み。ふだんはミュート、v12 からスピーカーのボタンで音を出せる） ===== */
   var player = null, apiReady = false, ready = false, errRun = 0, captionFor = null;
 
   window.onYouTubeIframeAPIReady = function () { apiReady = true; createPlayer(); };
@@ -168,14 +168,15 @@
     pos++;
     if (pos >= queue.length) { shuffle(queue); pos = 0; } // 一巡したら並べ直してもう一周
     player.loadVideoById(queue[pos].id);
-    player.mute();
+    applySound();
+    watchStart();
   }
 
   function onState(e) {
     if (e.data === YT.PlayerState.PLAYING) {
       errRun = 0;
       hideCaptions();
-      if (!player.isMuted()) player.mute();
+      applySound();
       var d = player.getVideoData ? player.getVideoData() : {};
       if (d && d.video_id && d.video_id !== captionFor) {
         captionFor = d.video_id;
@@ -183,8 +184,31 @@
         showCaption(item && item.artist ? item.artist : (d.author || ''), item && item.title ? item.title : (d.title || ''));
       }
     } else if (e.data === YT.PlayerState.ENDED && !playlistId) {
+      if (resumeAfterToggle('終了')) return; // v15：音の切り替え直後の「終了」は、本当の終わりでなければ同じ動画に戻す
       next();
     }
+  }
+
+  /* ===== v15：音を切り替えたとき、iPhone で動画が止まって次へ飛ぶのを防ぐ =====
+     音を切り替えた瞬間の動画と位置を覚えておき（v16）、音の切り替えから6秒以内にエラーや「終了」が来たら、
+     次の動画へ行かずに同じ動画の同じ位置から再生し直す */
+  var lastPos = { id: null, t: 0, dur: 0 }, lastToggle = 0;
+  // v16：2秒ごとに見に行くのをやめ、音を切り替えた瞬間だけ位置を覚える（起動時は何もしない）
+  function markToggle() {
+    lastToggle = Date.now();
+    if (!ready || playlistId) return;
+    try {
+      var d = player.getVideoData();
+      lastPos = { id: d && d.video_id, t: player.getCurrentTime() || 0, dur: player.getDuration() || 0 };
+    } catch (e) {}
+  }
+  function resumeAfterToggle(why) {
+    if (!lastToggle || Date.now() - lastToggle > 6000 || !lastPos.id) return false;
+    if (lastPos.dur && lastPos.t > lastPos.dur - 5) return false; // 本当に終わりかけだったなら次へ
+    lastToggle = 0; // 1回だけ
+    player.loadVideoById({ videoId: lastPos.id, startSeconds: Math.floor(lastPos.t) });
+    applySound();
+    return true;
   }
 
   // YouTube の字幕（自動字幕を含む）を消す。ミュート再生だと字幕が自動で出ることがあるため、
@@ -201,10 +225,12 @@
 
   // 埋め込み禁止・削除済みなどで再生できない動画は、記録して飛ばす
   function onError(e) {
+    if (resumeAfterToggle('エラー')) return; // v15
     var id = !playlistId && queue[pos] ? queue[pos].id : null;
     if (id && (e.data === 100 || e.data === 101 || e.data === 150)) { bad[id] = 1; store.set('bad', bad); }
     errRun++;
     if (errRun > Math.max(5, queue.length)) { say('再生できる動画が見つかりません。検索の言葉やアーティストを変えてみてください'); return; }
+    toast('再生できなかったので次の動画へ（' + e.data + '）', 3000); // v15：飛ばした理由を出す
     setTimeout(next, 600);
   }
 
@@ -218,6 +244,43 @@
     capTimer = setTimeout(function () { capEl.classList.remove('show'); }, CAPTION_MS);
   }
 
+  /* ===== v12：音（スピーカーのボタンで出す。ふだんは音なし） =====
+     soundOn：音を出したいか（スピーカーのボタンで切替。開くたびに音なしから始まる）
+     unlocked：画面に一度触れたか（触れるまではブラウザが音を出させてくれない） */
+  var soundOn = false, unlocked = false, startTimer = null;
+  function applySound() {
+    if (!ready) return;
+    try {
+      if (soundOn && unlocked) { if (player.isMuted()) player.unMute(); player.setVolume(100); }
+      else if (!player.isMuted()) player.mute();
+    } catch (e) {}
+  }
+  // 画面に触れたとき：音を出せる状態にして、止まっていれば再生する
+  function unlockSound() {
+    if (!ready) return;
+    var first = !unlocked;
+    unlocked = true;
+    markToggle(); // v15/v16
+    applySound();
+    if (player.getPlayerState() !== YT.PlayerState.PLAYING && (queue.length || playlistId)) player.playVideo();
+    if (first && soundOn) toast('音を出しました', 1500);
+  }
+  // iPhone などでは、音ありのまま次の曲が自動で始まらないことがある。
+  // 3秒たっても再生が始まらなければ、いったん音なしで再生を続け、「タップで音が出ます」と案内する
+  function watchStart() {
+    clearTimeout(startTimer);
+    if (!(soundOn && unlocked)) return;
+    startTimer = setTimeout(function check() {
+      var s = player.getPlayerState();
+      if (s === YT.PlayerState.PLAYING || s === YT.PlayerState.ENDED) return;
+      if (s === YT.PlayerState.BUFFERING) { startTimer = setTimeout(check, 2000); return; } // 読み込み中は待つ
+      unlocked = false;
+      applySound();
+      player.playVideo();
+      toast('画面をタップすると音が出ます', 4000);
+    }, 3000);
+  }
+
   /* ===== 操作ボタン ===== */
   var bar = $('#bar'), barTimer = null;
   function showBar() {
@@ -226,12 +289,27 @@
     barTimer = setTimeout(function () { bar.classList.add('hide'); }, BAR_HIDE_MS);
   }
   $('#tap').addEventListener('click', function () {
+    if (soundOn) unlockSound(); // 音ありにしている間は、タップで止まった音を戻す
     showBar();
     if (queue.length && pos >= 0) showCaption(queue[pos].artist, queue[pos].title);
   });
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   $('#btnNext').addEventListener('click', function () { showBar(); next(); });
+
+  // 音のオン・オフ
+  var btnSnd = $('#btnSnd');
+  btnSnd.classList.toggle('on', soundOn);
+  btnSnd.addEventListener('click', function () {
+    showBar();
+    soundOn = !soundOn;
+    btnSnd.classList.toggle('on', soundOn);
+    unlocked = true;
+    markToggle(); // v15/v16
+    applySound();
+    toast(soundOn ? '音を出します' : '音を消しました', 1500);
+  });
+
 
   // 全画面
   var root = document.documentElement, btnFs = $('#btnFs');
@@ -302,8 +380,7 @@
     zoomMode = ZOOMS[(ZOOMS.indexOf(zoomMode) + 1) % ZOOMS.length];
     store.set('zoom', zoomMode);
     layoutVideo();
-    // v11：iPhone では原因を確かめるため、画面の高さとブラウザが使える高さも小さく出す
-    toast(ZOOM_NAME[zoomMode] + (isIOS ? '（画面 ' + screen.height + ' / 表示 ' + window.innerHeight + '）' : ''), 3500);
+    toast(ZOOM_NAME[zoomMode], 2500);
   });
 
   btnFs.addEventListener('click', function () {
