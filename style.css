@@ -37,14 +37,18 @@ html, body {
   }
   body.rot #caption { display: none; }
   /* v8：回転表示のときはボタンも90°回して、横から見たときの右上（＝縦持ちの右下）に縦に並べる */
-  body.rot #bar { top: auto; bottom: 2vmin; right: 2vmin; flex-direction: column; }
+  body.rot #bar {
+    top: auto; flex-direction: column;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 2vmin);
+    right: calc(env(safe-area-inset-right, 0px) + 2vmin);
+  }
   body.rot #bar button { margin: 1vmin 0 0; }
   body.rot #bar svg { transform: rotate(90deg); }
 }
 
 /* ===== 短い案内 ===== */
 #toast {
-  position: fixed; left: 6vw; right: 6vw; top: 4vh; z-index: 15;
+  position: fixed; left: 6vw; right: 6vw; top: calc(env(safe-area-inset-top, 0px) + 4vh); z-index: 15;
   box-sizing: border-box;
   padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, .78);
   font-size: 14px; line-height: 1.5; text-align: center;
@@ -74,7 +78,19 @@ html, body {
 #caption span { display: block; overflow: hidden; text-overflow: ellipsis; }
 
 /* ===== 操作ボタン（右上、5秒で消える） ===== */
-#bar { position: fixed; top: 1.5vh; right: 1.5vw; z-index: 10; display: flex; transition: opacity .5s; }
+/* v9：iPhone の時計・電池の表示（ステータスバー）やホームバーと重ならないよう、安全な余白（safe-area）の内側に置く */
+#bar {
+  position: fixed; z-index: 10; display: flex; transition: opacity .5s;
+  top: calc(env(safe-area-inset-top, 0px) + 1.5vmin);
+  right: calc(env(safe-area-inset-right, 0px) + 1.5vmin);
+}
+/* 縦持ち（回転なし）のときは、親指が届くよう画面の下の方に横並びで出す */
+@media (orientation: portrait) {
+  body:not(.rot) #bar {
+    top: auto; right: 0; left: 0; justify-content: center;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6vh);
+  }
+}
 #bar.hide { opacity: 0; pointer-events: none; }
 /* v8：大きさは画面の短い辺（vmin）基準に。縦持ちの iPhone で大きくなりすぎないように */
 #bar button {
@@ -94,7 +110,11 @@ html, body {
   display: none; -webkit-user-select: text; user-select: text;
 }
 #settings.show { display: block; }
-#setForm { max-width: 640px; margin: 0 auto; padding: 16px 16px 28px; }
+#setForm {
+  max-width: 640px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 16px)
+           calc(env(safe-area-inset-bottom, 0px) + 28px) calc(env(safe-area-inset-left, 0px) + 16px);
+}
 #setForm h1 { font-size: 18px; margin: 0 0 6px; }
 #setForm label { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--dim); }
 #setForm textarea, #setForm input, #setForm select {
@@ -118,7 +138,8 @@ html, body {
   -webkit-user-select: text; user-select: text;
 }
 #share.show { display: flex; align-items: center; justify-content: center; }
-.shareBox { display: flex; align-items: center; padding: 12px 16px; max-width: 100%; box-sizing: border-box; }
+.shareBox { display: flex; align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: 100%; box-sizing: border-box; }
 #shareQr { flex: none; background: #fff; padding: 8px; border-radius: 8px; line-height: 0; }
 #shareQr:empty { display: none; }
 #shareQr svg { width: min(80vh, 45vw); height: min(80vh, 45vw); display: block; }
