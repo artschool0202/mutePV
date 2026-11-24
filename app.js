@@ -16,17 +16,23 @@
 
   var cfg = store.get('cfg', { artists: [], suffix: 'MV', key: '', urls: '' });
 
-  /* ===== URL の #key=…&artists=A|B で設定を受け取る（QRコードで渡す用） ===== */
+  /* ===== URL の #… で設定を受け取る（QRコードやリンクで渡す用） =====
+     #key=APIキー  #artists=A|B  #urls=動画やプレイリストのURL|URL（キーなしで人に渡せる） */
   (function importHash() {
     if (!location.hash || location.hash.length < 3) return;
     var p = {};
     location.hash.slice(1).split('&').forEach(function (kv) {
       var i = kv.indexOf('=');
-      if (i > 0) p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' '));
+      if (i > 0) {
+        try { p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); } catch (e) {}
+      }
     });
     if (p.key) cfg.key = p.key.trim();
     if (p.artists) cfg.artists = p.artists.split('|').map(function (s) { return s.trim(); }).filter(Boolean);
-    if (p.key || p.artists) {
+    if (p.urls) cfg.urls = p.urls.split('|').map(function (s) { return s.trim(); }).filter(Boolean).join('\n');
+    // #v=動画ID,動画ID,…（「共有リンクを作る」で作るリンク。キーなしで再生できる）
+    if (p.v) cfg.urls = p.v.split(',').filter(function (s) { return /^[\w-]{11}$/.test(s); }).join('\n');
+    if (p.key || p.artists || p.urls || p.v) {
       store.set('cfg', cfg);
       history.replaceState(null, '', location.pathname + location.search); // キーをURLに残さない
     }
@@ -36,7 +42,8 @@
   function say(t) { msgEl.textContent = t || ''; }
 
   /* ===== 動画の一覧（キュー）を作る ===== */
-  var queue = [], pos = -1, playlistId = null, bad = store.get('bad', {});
+  var queue = [], pos = -1, playlistId = null, bad = store.get('bad', {}), lastLists = [];
+  var SHARE_MAX = 40; // 共有リンクに入れる動画の上限（QRコードが細かくなりすぎないように）
 
   function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
   function norm(s) { return (s || '').toLowerCase().replace(/[\s・\-_.]/g, ''); }
@@ -104,7 +111,9 @@
     var lastErr = null;
     return Promise.all(jobs).then(function (lists) {
       var items = [], seen = {};
-      lists.concat([u.vids.map(function (id) { return { id: id, title: '', artist: '' }; })]).forEach(function (l) {
+      lists = lists.concat([u.vids.map(function (id) { return { id: id, title: '', artist: '' }; })]);
+      lastLists = lists; // 共有リンクを作るときに、アーティストごとの結果を使う
+      lists.forEach(function (l) {
         l.forEach(function (v) { if (!seen[v.id] && !bad[v.id]) { seen[v.id] = 1; items.push(v); } });
       });
       queue = shuffle(items); pos = -1;
@@ -274,6 +283,72 @@
   $('#btnCancel').addEventListener('click', closeSettings);
   $('#setForm').addEventListener('submit', function (e) { e.preventDefault(); readForm(); rebuild(false); });
   $('#btnRefresh').addEventListener('click', function () { readForm(); bad = {}; store.set('bad', bad); rebuild(true); });
+
+  /* ===== 共有リンク：検索で見つけた動画のIDだけを入れる（キーは入れない） ===== */
+  var shareEl = $('#share'), shareQr = $('#shareQr'), shareUrl = $('#shareUrl'), shareInfo = $('#shareInfo');
+
+  function pickShareIds() {
+    // アーティストごとに1本ずつ順番に取り、偏らないようにする
+    var lists = lastLists.map(function (l) { return l.filter(function (v) { return !bad[v.id]; }); });
+    var ids = [], seen = {}, i = 0, more = true;
+    while (ids.length < SHARE_MAX && more) {
+      more = false;
+      lists.forEach(function (l) {
+        if (i < l.length) {
+          more = true;
+          var id = l[i].id;
+          if (!seen[id] && ids.length < SHARE_MAX) { seen[id] = 1; ids.push(id); }
+        }
+      });
+      i++;
+    }
+    return ids;
+  }
+
+  function loadQrLib() {
+    if (window.qrcode) return Promise.resolve();
+    return new Promise(function (ok, ng) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+      s.onload = ok; s.onerror = ng;
+      document.head.appendChild(s);
+    });
+  }
+
+  function makeShare() {
+    var ids = pickShareIds();
+    if (!ids.length) { $('#setNote').textContent = '共有できる動画がありません。先にアーティストを登録して検索してください'; return; }
+    var base = location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '');
+    var link = base + '#v=' + ids.join(',');
+    var names = cfg.artists.length ? cfg.artists.join('、') : 'URLで入れた動画';
+    shareInfo.textContent = names + ' の動画 ' + ids.length + '本。受け取った人は API キーなしで、音なしで流せます。';
+    shareUrl.value = link;
+    shareQr.innerHTML = '';
+    shareEl.classList.add('show');
+    loadQrLib().then(function () {
+      var qr = qrcode(0, 'L');
+      qr.addData(link);
+      qr.make();
+      shareQr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    }).catch(function () { /* QRが作れなくてもリンクは使える */ });
+  }
+
+  $('#btnShare').addEventListener('click', function () {
+    readForm();
+    $('#setNote').textContent = '検索しています…';
+    build(false).then(function () { $('#setNote').textContent = ''; makeShare(); });
+  });
+  $('#btnShareSend').addEventListener('click', function () {
+    if (navigator.share) navigator.share({ title: '音なしPV', url: shareUrl.value }).catch(function () {});
+    else { shareUrl.select(); document.execCommand('copy'); }
+  });
+  $('#btnShareCopy').addEventListener('click', function () {
+    var b = this;
+    function done() { b.textContent = 'コピーしました'; setTimeout(function () { b.textContent = 'コピー'; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareUrl.value).then(done, function () { shareUrl.select(); document.execCommand('copy'); done(); });
+    else { shareUrl.select(); document.execCommand('copy'); done(); }
+  });
+  $('#btnShareClose').addEventListener('click', function () { shareEl.classList.remove('show'); });
 
   /* ===== 画面に戻ったとき ===== */
   document.addEventListener('visibilitychange', function () {

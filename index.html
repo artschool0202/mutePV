@@ -61,12 +61,30 @@
     <textarea id="fUrls" rows="3" placeholder="動画やプレイリストのURLを1行に1つ"></textarea>
 
     <div class="btns">
+      <button type="button" id="btnShare">共有リンクを作る</button>
       <button type="button" id="btnRefresh">検索し直す</button>
       <button type="button" id="btnCancel">閉じる</button>
       <button type="submit" class="primary">保存して再生</button>
     </div>
     <p class="note" id="setNote"></p>
   </form>
+</div>
+
+<!-- 共有リンク（検索で見つけた動画をキーなしで渡す） -->
+<div id="share">
+  <div class="shareBox">
+    <div id="shareQr"></div>
+    <div class="shareSide">
+      <h1>共有リンク（キーなし）</h1>
+      <p class="note" id="shareInfo"></p>
+      <textarea id="shareUrl" rows="3" readonly></textarea>
+      <div class="btns">
+        <button type="button" id="btnShareSend">LINEなどで送る</button>
+        <button type="button" id="btnShareCopy">コピー</button>
+        <button type="button" id="btnShareClose" class="primary">閉じる</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>

@@ -1,8 +1,12 @@
-# 音なしPV v1（2026-11-24）
+# 音なしPV v3（2026-11-24）
+
+v3 の変更：設定の「共有リンクを作る」で、アーティスト検索で見つけた動画（最大40本、アーティストごとに均等）の ID だけを入れたリンク `…/mutePV/#v=ID,ID,…` と QR コードを作れるようにした。キーは入らないので人に渡してよい。受け取った人はキーなしで再生できる。LINE などへはスマホの共有メニューで送れる。QR の作成には cdnjs の qrcode-generator 1.4.4 を、そのときだけ読み込む。
 
 登録したアーティストの PV を YouTube で検索し、音なし・横向き全画面で流し続ける Webアプリ。Rakuten Mini（Android 9 の Chrome）で置きっぱなしにする想定。
 
-公開予定：https://artschool0202.github.io/mutepv/（GitHub リポジトリ artschool0202/mutepv を作って置く）
+公開先：https://artschool0202.github.io/mutePV/（GitHub リポジトリ artschool0202/mutePV。URL は大文字小文字を区別する）
+
+v2 の変更：リンクの `#urls=` で動画・プレイリストのURLを渡せるようにした（キーなしで人に共有できる）。
 
 ## しくみ
 
@@ -26,8 +30,13 @@
 
 ## 設定を QR コードで渡す
 
-`https://artschool0202.github.io/mutepv/#key=APIキー&artists=アーティスト1|アーティスト2` を開くと、その内容が端末に保存される（開いたあと URL からキーは消える）。
+開くと、その内容が端末に保存される（開いたあと URL からは消える）。
+
+| 渡し方 | URL の形 | 人に渡してよいか |
+| --- | --- | --- |
+| 自分用（キー入り） | `https://artschool0202.github.io/mutePV/#key=APIキー&artists=アーティスト1\|アーティスト2` | 渡さない |
+| 動画を入れて共有（キーなし） | `https://artschool0202.github.io/mutePV/#urls=` ＋ YouTube のURLを URL エンコードしたもの（複数は `\|` 区切り） | 渡してよい |
 
 ## ファイル
 
-index.html / style.css / app.js / manifest.json / sw.js（CACHE は mutepv-v1）/ icon.svg / icon-192.png / icon-512.png
+index.html / style.css / app.js / manifest.json / sw.js（CACHE は mutepv-v2）/ icon.svg / icon-192.png / icon-512.png
