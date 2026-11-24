@@ -246,7 +246,25 @@
     (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
   var useRotate = !reqFs || isIOS;
   var rot = store.get('rot', false);
-  function rotUi() { document.body.classList.toggle('rot', rot); btnFs.classList.toggle('on', rot); }
+  function rotUi() { document.body.classList.toggle('rot', rot); btnFs.classList.toggle('on', rot); layoutVideo(); }
+
+  /* ===== v7：表示の大きさ ===== */
+  // fill＝画面いっぱい（既定。端が少し切れる）／zoom＝さらに拡大（動画に黒帯が入っている映画サイズのMV向け）／fit＝全体を表示（黒帯あり）
+  var ZOOMS = ['fill', 'zoom', 'fit'];
+  var ZOOM_NAME = { fill: '画面いっぱい', zoom: '拡大（動画の中の黒帯も消す）', fit: '全体を表示' };
+  var ZOOM_EXTRA = 1.33;               // 「拡大」の倍率（2.35:1 の映画サイズが縦いっぱいになる）
+  var zoomMode = store.get('zoom', 'fill');
+  function layoutVideo() {
+    var mode = zoomMode || 'fill';
+    var w = window.innerWidth, h = window.innerHeight;
+    if (document.body.classList.contains('rot') && h > w) { var t = w; w = h; h = t; } // 90°回しているときは縦横を入れ替える
+    var k = mode === 'fit' ? Math.min(w / 16, h / 9) : Math.max(w / 16, h / 9);
+    if (mode === 'zoom') k *= ZOOM_EXTRA;
+    root.style.setProperty('--pw', Math.ceil(16 * k) + 'px');
+    root.style.setProperty('--ph', Math.ceil(9 * k) + 'px');
+  }
+  window.addEventListener('resize', layoutVideo);
+  window.addEventListener('orientationchange', function () { setTimeout(layoutVideo, 300); });
   if (useRotate) rotUi();
 
   var toastEl = $('#toast'), toastTimer = null;
@@ -260,6 +278,16 @@
     var tips = store.get('iosTip', 0);
     if (tips < 3) { store.set('iosTip', tips + 1); setTimeout(function () { toast('Safari の共有ボタン（□↑）→「ホーム画面に追加」から開くと、上下のバーが消えて大きく映ります', 8000); }, 2500); }
   }
+
+  layoutVideo();
+  var btnZoom = $('#btnZoom');
+  btnZoom.addEventListener('click', function () {
+    showBar();
+    zoomMode = ZOOMS[(ZOOMS.indexOf(zoomMode) + 1) % ZOOMS.length];
+    store.set('zoom', zoomMode);
+    layoutVideo();
+    toast(ZOOM_NAME[zoomMode], 2500);
+  });
 
   btnFs.addEventListener('click', function () {
     showBar();

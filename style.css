@@ -15,9 +15,16 @@ html, body {
   touch-action: manipulation;
 }
 
-/* ===== 動画（画面いっぱい、16:9 を保って黒帯） ===== */
-#playerWrap { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
-#playerWrap iframe, #player { width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; border: 0; display: block; }
+/* ===== 動画（v7：既定は画面いっぱい。はみ出す端は切る） =====
+   --pw / --ph は JS が画面の大きさと表示モード（全体／いっぱい／拡大）から計算して入れる */
+#playerWrap {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+#playerWrap iframe, #player {
+  flex: none; width: var(--pw, 100vw); height: var(--ph, 56.25vw);
+  border: 0; display: block;
+}
 #tap { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 5; }
 
 /* iPhone 用：縦持ちのとき、動画を90°回して画面いっぱいに出す */
@@ -27,7 +34,6 @@ html, body {
     width: 100vh; height: 100vw;
     transform-origin: 0 0; transform: rotate(90deg);
   }
-  body.rot #playerWrap iframe, body.rot #player { width: 100vh; height: 56.25vh; max-height: 100vw; max-width: 177.78vw; }
   body.rot #caption { display: none; }
 }
 
